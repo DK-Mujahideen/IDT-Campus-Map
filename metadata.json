@@ -1,0 +1,6 @@
+{
+  "name": "Smart Campus — MSAJCE Navigation",
+  "description": "AI-powered campus navigation, interactive SVG campus map, facility finder, and room availability platform for Mohamed Sathak A.J. College of Engineering and Technology (MSAJCE), Siruseri, Chennai.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

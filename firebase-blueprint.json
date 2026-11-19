@@ -1,0 +1,275 @@
+{
+  "entities": {
+    "Building": {
+      "title": "Building",
+      "description": "Campus building footprint and metadata for the interactive SVG campus map.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "code": { "type": "string", "minLength": 1, "maxLength": 16 },
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "shortName": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "category": { "type": "string", "enum": ["academic", "labs", "admin", "facilities", "sports"] },
+        "floors": { "type": "integer" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "entranceNodeId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "hours": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "accessible": { "type": "boolean" },
+        "isDemo": { "type": "boolean" },
+        "visibility": { "type": "string", "enum": ["public", "archived"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "code",
+        "name",
+        "shortName",
+        "category",
+        "floors",
+        "description",
+        "x",
+        "y",
+        "width",
+        "height",
+        "entranceNodeId",
+        "hours",
+        "accessible",
+        "isDemo",
+        "visibility"
+      ]
+    },
+    "Location": {
+      "title": "Location",
+      "description": "Specific classroom, laboratory, department, office, or facility inside a building.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "buildingId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "floor": { "type": "integer" },
+        "roomNumber": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "category": { "type": "string", "enum": ["classroom", "laboratory", "department", "office", "facility"] },
+        "department": { "type": "string", "maxLength": 100 },
+        "capacity": { "type": "integer" },
+        "hours": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 500 },
+        "popular": { "type": "boolean" },
+        "isDemo": { "type": "boolean" },
+        "visibility": { "type": "string", "enum": ["public", "archived"] }
+      },
+      "required": [
+        "id",
+        "name",
+        "buildingId",
+        "floor",
+        "roomNumber",
+        "category",
+        "hours",
+        "popular",
+        "isDemo",
+        "visibility"
+      ]
+    },
+    "RouteSegment": {
+      "title": "RouteSegment",
+      "description": "Walkable campus path segment connecting two map navigation nodes.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fromNodeId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "toNodeId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "distanceMeters": { "type": "number" },
+        "accessible": { "type": "boolean" },
+        "pathLabel": { "type": "string", "maxLength": 120 },
+        "isDemo": { "type": "boolean" },
+        "visibility": { "type": "string", "enum": ["public", "archived"] }
+      },
+      "required": [
+        "id",
+        "fromNodeId",
+        "toNodeId",
+        "distanceMeters",
+        "accessible",
+        "isDemo",
+        "visibility"
+      ]
+    },
+    "RoomStatus": {
+      "title": "RoomStatus",
+      "description": "Live availability status for a classroom, lab, or hall.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "locationId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "buildingId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "roomNumber": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "status": { "type": "string", "enum": ["available", "occupied", "unknown"] },
+        "note": { "type": "string", "maxLength": 200 },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "visibility": { "type": "string", "enum": ["public", "archived"] }
+      },
+      "required": [
+        "id",
+        "locationId",
+        "buildingId",
+        "roomNumber",
+        "status",
+        "updatedBy",
+        "updatedAt",
+        "visibility"
+      ]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile and role metadata.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 180 },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "affiliation": { "type": "string", "enum": ["student", "faculty", "staff", "visitor"] },
+        "department": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email", "role", "createdAt"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "Student, faculty, or visitor feedback on campus navigation or location details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "category": { "type": "string", "enum": ["map_correction", "room_issue", "navigation", "general"] },
+        "subject": { "type": "string", "minLength": 3, "maxLength": 140 },
+        "message": { "type": "string", "minLength": 5, "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["open", "reviewed", "resolved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "userId",
+        "authorName",
+        "category",
+        "subject",
+        "message",
+        "status",
+        "createdAt"
+      ]
+    },
+    "CampusInfo": {
+      "title": "CampusInfo",
+      "description": "Global campus notice, verification status, and announcements managed by administrators.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "campusName": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "locationText": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "announcement": { "type": "string", "maxLength": 500 },
+        "dataNotice": { "type": "string", "minLength": 10, "maxLength": 500 },
+        "visibility": { "type": "string", "enum": ["public"] },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "campusName",
+        "locationText",
+        "announcement",
+        "dataNotice",
+        "visibility",
+        "updatedBy",
+        "updatedAt"
+      ]
+    },
+    "MapLayoutSubmission": {
+      "title": "MapLayoutSubmission",
+      "description": "Uploaded SVG or JSON campus map layout awaiting administrator legitimacy verification.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "description": { "type": "string", "minLength": 5, "maxLength": 500 },
+        "sourceReference": { "type": "string", "minLength": 2, "maxLength": 200 },
+        "fileName": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "format": { "type": "string", "enum": ["svg", "json"] },
+        "fileSizeBytes": { "type": "integer" },
+        "buildingCount": { "type": "integer" },
+        "floorScope": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "layoutContent": { "type": "string", "minLength": 10, "maxLength": 100000 },
+        "sha256Hash": { "type": "string", "minLength": 16, "maxLength": 64, "pattern": "^[a-fA-F0-9]+$" },
+        "hasSecurityWarnings": { "type": "boolean" },
+        "submittedByUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "submittedByName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "isActive": { "type": "boolean" },
+        "reviewedBy": { "type": "string", "maxLength": 128 },
+        "reviewNotes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "reviewedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "sourceReference",
+        "fileName",
+        "format",
+        "fileSizeBytes",
+        "buildingCount",
+        "floorScope",
+        "layoutContent",
+        "sha256Hash",
+        "hasSecurityWarnings",
+        "submittedByUid",
+        "submittedByName",
+        "status",
+        "isActive",
+        "reviewedBy",
+        "reviewNotes",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/buildings/{buildingId}": {
+      "schema": { "$ref": "#/entities/Building" },
+      "description": "Campus building directory and SVG map geometry."
+    },
+    "/locations/{locationId}": {
+      "schema": { "$ref": "#/entities/Location" },
+      "description": "Campus rooms, departments, labs, offices, and facilities."
+    },
+    "/routes/{routeId}": {
+      "schema": { "$ref": "#/entities/RouteSegment" },
+      "description": "Walkable campus footpath graph edges."
+    },
+    "/room_status/{roomId}": {
+      "schema": { "$ref": "#/entities/RoomStatus" },
+      "description": "Real-time availability status of classrooms and labs."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Authenticated user accounts and RBAC roles."
+    },
+    "/feedback/{feedbackId}": {
+      "schema": { "$ref": "#/entities/Feedback" },
+      "description": "User-submitted map corrections and campus feedback."
+    },
+    "/campus_info/{infoId}": {
+      "schema": { "$ref": "#/entities/CampusInfo" },
+      "description": "Institution header details, announcements, and demonstration disclaimer."
+    },
+    "/map_layouts/{layoutId}": {
+      "schema": { "$ref": "#/entities/MapLayoutSubmission" },
+      "description": "Uploaded SVG or JSON campus map layouts subject to admin legitimacy verification."
+    }
+  }
+}

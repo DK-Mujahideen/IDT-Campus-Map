@@ -1,0 +1,349 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Reusable Security Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'muja1311@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // --- Validation Blueprints ---
+    function isValidBuilding(data) {
+      return data.keys().hasAll([
+        'id', 'code', 'name', 'shortName', 'category', 'floors', 'description',
+        'x', 'y', 'width', 'height', 'entranceNodeId', 'hours', 'accessible',
+        'isDemo', 'visibility'
+      ])
+      && data.keys().hasOnly([
+        'id', 'code', 'name', 'shortName', 'category', 'floors', 'description',
+        'x', 'y', 'width', 'height', 'entranceNodeId', 'hours', 'accessible',
+        'isDemo', 'visibility', 'updatedAt'
+      ])
+      && isValidId(data.id)
+      && data.code is string && data.code.size() >= 1 && data.code.size() <= 16
+      && data.name is string && data.name.size() >= 2 && data.name.size() <= 120
+      && data.shortName is string && data.shortName.size() >= 1 && data.shortName.size() <= 40
+      && data.category in ['academic', 'labs', 'admin', 'facilities', 'sports']
+      && data.floors is int && data.floors >= 1 && data.floors <= 20
+      && data.description is string && data.description.size() >= 1 && data.description.size() <= 600
+      && data.x is number && data.x >= 0 && data.x <= 2000
+      && data.y is number && data.y >= 0 && data.y <= 2000
+      && data.width is number && data.width >= 20 && data.width <= 800
+      && data.height is number && data.height >= 20 && data.height <= 800
+      && isValidId(data.entranceNodeId)
+      && data.hours is string && data.hours.size() >= 1 && data.hours.size() <= 80
+      && data.accessible is bool
+      && data.isDemo is bool
+      && data.visibility in ['public', 'archived']
+      && (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidLocation(data) {
+      return data.keys().hasAll([
+        'id', 'name', 'buildingId', 'floor', 'roomNumber', 'category',
+        'hours', 'popular', 'isDemo', 'visibility'
+      ])
+      && data.keys().hasOnly([
+        'id', 'name', 'buildingId', 'floor', 'roomNumber', 'category',
+        'department', 'capacity', 'hours', 'description', 'popular', 'isDemo', 'visibility'
+      ])
+      && isValidId(data.id)
+      && data.name is string && data.name.size() >= 2 && data.name.size() <= 120
+      && isValidId(data.buildingId)
+      && data.floor is int && data.floor >= 0 && data.floor <= 20
+      && data.roomNumber is string && data.roomNumber.size() >= 1 && data.roomNumber.size() <= 32
+      && data.category in ['classroom', 'laboratory', 'department', 'office', 'facility']
+      && (!('department' in data) || (data.department is string && data.department.size() <= 100))
+      && (!('capacity' in data) || (data.capacity is int && data.capacity >= 0 && data.capacity <= 5000))
+      && data.hours is string && data.hours.size() >= 1 && data.hours.size() <= 80
+      && (!('description' in data) || (data.description is string && data.description.size() <= 500))
+      && data.popular is bool
+      && data.isDemo is bool
+      && data.visibility in ['public', 'archived'];
+    }
+
+    function isValidRoute(data) {
+      return data.keys().hasAll([
+        'id', 'fromNodeId', 'toNodeId', 'distanceMeters', 'accessible', 'isDemo', 'visibility'
+      ])
+      && data.keys().hasOnly([
+        'id', 'fromNodeId', 'toNodeId', 'distanceMeters', 'accessible', 'pathLabel', 'isDemo', 'visibility'
+      ])
+      && isValidId(data.id)
+      && isValidId(data.fromNodeId)
+      && isValidId(data.toNodeId)
+      && data.distanceMeters is number && data.distanceMeters > 0 && data.distanceMeters <= 5000
+      && data.accessible is bool
+      && (!('pathLabel' in data) || (data.pathLabel is string && data.pathLabel.size() <= 120))
+      && data.isDemo is bool
+      && data.visibility in ['public', 'archived'];
+    }
+
+    function isValidRoomStatus(data) {
+      return data.keys().hasAll([
+        'id', 'locationId', 'buildingId', 'roomNumber', 'status', 'updatedBy', 'updatedAt', 'visibility'
+      ])
+      && data.keys().hasOnly([
+        'id', 'locationId', 'buildingId', 'roomNumber', 'status', 'note', 'updatedBy', 'updatedAt', 'visibility'
+      ])
+      && isValidId(data.id)
+      && isValidId(data.locationId)
+      && isValidId(data.buildingId)
+      && data.roomNumber is string && data.roomNumber.size() >= 1 && data.roomNumber.size() <= 32
+      && data.status in ['available', 'occupied', 'unknown']
+      && (!('note' in data) || (data.note is string && data.note.size() <= 200))
+      && data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128
+      && data.updatedAt is timestamp
+      && data.visibility in ['public', 'archived'];
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'role', 'createdAt'])
+      && data.keys().hasOnly(['uid', 'displayName', 'email', 'role', 'affiliation', 'department', 'createdAt'])
+      && isValidId(data.uid)
+      && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+      && data.email is string && data.email.size() >= 3 && data.email.size() <= 180
+      && data.role in ['user', 'admin']
+      && (!('affiliation' in data) || data.affiliation in ['student', 'faculty', 'staff', 'visitor'])
+      && (!('department' in data) || (data.department is string && data.department.size() <= 100))
+      && data.createdAt is timestamp;
+    }
+
+    function isValidFeedback(data) {
+      return data.keys().hasAll([
+        'id', 'userId', 'authorName', 'category', 'subject', 'message', 'status', 'createdAt'
+      ])
+      && data.keys().hasOnly([
+        'id', 'userId', 'authorName', 'category', 'subject', 'message', 'status', 'createdAt'
+      ])
+      && isValidId(data.id)
+      && isValidId(data.userId)
+      && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100
+      && data.category in ['map_correction', 'room_issue', 'navigation', 'general']
+      && data.subject is string && data.subject.size() >= 3 && data.subject.size() <= 140
+      && data.message is string && data.message.size() >= 5 && data.message.size() <= 1000
+      && data.status in ['open', 'reviewed', 'resolved']
+      && data.createdAt is timestamp;
+    }
+
+    function isValidCampusInfo(data) {
+      return data.keys().hasAll([
+        'id', 'campusName', 'locationText', 'announcement', 'dataNotice', 'visibility', 'updatedBy', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'id', 'campusName', 'locationText', 'announcement', 'dataNotice', 'visibility', 'updatedBy', 'updatedAt'
+      ])
+      && isValidId(data.id)
+      && data.campusName is string && data.campusName.size() >= 2 && data.campusName.size() <= 160
+      && data.locationText is string && data.locationText.size() >= 2 && data.locationText.size() <= 160
+      && data.announcement is string && data.announcement.size() <= 500
+      && data.dataNotice is string && data.dataNotice.size() >= 10 && data.dataNotice.size() <= 500
+      && data.visibility == 'public'
+      && data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidMapLayout(data) {
+      return data.keys().hasAll([
+        'id', 'title', 'description', 'sourceReference', 'fileName', 'format',
+        'fileSizeBytes', 'buildingCount', 'floorScope', 'layoutContent', 'sha256Hash',
+        'hasSecurityWarnings', 'submittedByUid', 'submittedByName', 'status',
+        'isActive', 'reviewedBy', 'reviewNotes', 'createdAt'
+      ])
+      && data.keys().hasOnly([
+        'id', 'title', 'description', 'sourceReference', 'fileName', 'format',
+        'fileSizeBytes', 'buildingCount', 'floorScope', 'layoutContent', 'sha256Hash',
+        'hasSecurityWarnings', 'submittedByUid', 'submittedByName', 'status',
+        'isActive', 'reviewedBy', 'reviewNotes', 'createdAt', 'reviewedAt'
+      ])
+      && isValidId(data.id)
+      && data.title is string && data.title.size() >= 3 && data.title.size() <= 120
+      && data.description is string && data.description.size() >= 5 && data.description.size() <= 500
+      && data.sourceReference is string && data.sourceReference.size() >= 2 && data.sourceReference.size() <= 200
+      && data.fileName is string && data.fileName.size() >= 3 && data.fileName.size() <= 120
+      && data.format in ['svg', 'json']
+      && data.fileSizeBytes is int && data.fileSizeBytes >= 1 && data.fileSizeBytes <= 200000
+      && data.buildingCount is int && data.buildingCount >= 0 && data.buildingCount <= 500
+      && data.floorScope is string && data.floorScope.size() >= 2 && data.floorScope.size() <= 40
+      && data.layoutContent is string && data.layoutContent.size() >= 10 && data.layoutContent.size() <= 100000
+      && data.sha256Hash is string && data.sha256Hash.size() >= 16 && data.sha256Hash.size() <= 64 && data.sha256Hash.matches('^[a-fA-F0-9]+$')
+      && data.hasSecurityWarnings is bool
+      && isValidId(data.submittedByUid)
+      && data.submittedByName is string && data.submittedByName.size() >= 1 && data.submittedByName.size() <= 100
+      && data.status in ['pending', 'verified', 'rejected']
+      && data.isActive is bool
+      && (!data.isActive || data.status == 'verified')
+      && data.reviewedBy is string && data.reviewedBy.size() <= 128
+      && data.reviewNotes is string && data.reviewNotes.size() <= 500
+      && data.createdAt is timestamp
+      && (!('reviewedAt' in data) || data.reviewedAt is timestamp);
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Buildings (Public Directory Read, Admin-Only Write)
+    match /buildings/{buildingId} {
+      allow get: if isValidId(buildingId) && (existing().visibility == 'public' || isAdmin());
+      allow list: if resource.data.visibility == 'public' || isBootstrappedAdmin();
+      allow create: if isValidId(buildingId) && isValidBuilding(incoming()) && incoming().id == buildingId && isAdmin();
+      allow update: if isValidId(buildingId) && isValidBuilding(incoming()) && incoming().id == existing().id && incoming().diff(existing()).affectedKeys().hasOnly(['code', 'name', 'shortName', 'category', 'floors', 'description', 'x', 'y', 'width', 'height', 'entranceNodeId', 'hours', 'accessible', 'isDemo', 'visibility', 'updatedAt']) && isAdmin();
+      allow delete: if isValidId(buildingId) && isAdmin();
+    }
+
+    // 2. Locations (Public Directory Read, Admin-Only Write)
+    match /locations/{locationId} {
+      allow get: if isValidId(locationId) && (existing().visibility == 'public' || isAdmin());
+      allow list: if resource.data.visibility == 'public' || isBootstrappedAdmin();
+      allow create: if isValidId(locationId) && isValidLocation(incoming()) && incoming().id == locationId && isAdmin() && exists(/databases/$(database)/documents/buildings/$(incoming().buildingId));
+      allow update: if isValidId(locationId) && isValidLocation(incoming()) && incoming().id == existing().id && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'buildingId', 'floor', 'roomNumber', 'category', 'department', 'capacity', 'hours', 'description', 'popular', 'isDemo', 'visibility']) && isAdmin();
+      allow delete: if isValidId(locationId) && isAdmin();
+    }
+
+    // 3. Routes (Public Navigation Graph Read, Admin-Only Write)
+    match /routes/{routeId} {
+      allow get: if isValidId(routeId) && (existing().visibility == 'public' || isAdmin());
+      allow list: if resource.data.visibility == 'public' || isBootstrappedAdmin();
+      allow create: if isValidId(routeId) && isValidRoute(incoming()) && incoming().id == routeId && isAdmin();
+      allow update: if isValidId(routeId) && isValidRoute(incoming()) && incoming().id == existing().id && incoming().diff(existing()).affectedKeys().hasOnly(['fromNodeId', 'toNodeId', 'distanceMeters', 'accessible', 'pathLabel', 'isDemo', 'visibility']) && isAdmin();
+      allow delete: if isValidId(routeId) && isAdmin();
+    }
+
+    // 4. Room Status (Public Read, Admin-Only Status Updates)
+    match /room_status/{roomId} {
+      allow get: if isValidId(roomId) && (existing().visibility == 'public' || isAdmin());
+      allow list: if resource.data.visibility == 'public' || isBootstrappedAdmin();
+      allow create: if isValidId(roomId) && isValidRoomStatus(incoming()) && incoming().id == roomId && incoming().updatedAt == request.time && isAdmin();
+      allow update: if isValidId(roomId) && isValidRoomStatus(incoming()) && incoming().id == existing().id && incoming().locationId == existing().locationId && incoming().updatedAt == request.time && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'note', 'updatedBy', 'updatedAt', 'visibility', 'roomNumber', 'buildingId']) && isAdmin();
+      allow delete: if isValidId(roomId) && isAdmin();
+    }
+
+    // 5. Users (Strict PII Isolation & Anti-Privilege-Escalation)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUser(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && (incoming().role == 'user' || (incoming().role == 'admin' && isBootstrappedAdmin()));
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && (
+          (isOwner(userId) && incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'affiliation', 'department'])) ||
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'affiliation', 'department', 'role']))
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // 6. Feedback (Verified User Submit, Owner or Admin Read, Admin Manage)
+    match /feedback/{feedbackId} {
+      allow get: if isValidId(feedbackId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(feedbackId)
+        && isValidFeedback(incoming())
+        && incoming().id == feedbackId
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'open'
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(feedbackId)
+        && isValidFeedback(incoming())
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && existing().status != 'resolved'
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status'])
+        && isAdmin();
+      allow delete: if isValidId(feedbackId) && isAdmin();
+    }
+
+    // 7. Campus Info (Public Read, Admin-Only Write)
+    match /campus_info/{infoId} {
+      allow get: if isValidId(infoId) && (existing().visibility == 'public' || isAdmin());
+      allow list: if resource.data.visibility == 'public' || isBootstrappedAdmin();
+      allow create: if isValidId(infoId) && isValidCampusInfo(incoming()) && incoming().id == infoId && incoming().updatedAt == request.time && isAdmin();
+      allow update: if isValidId(infoId) && isValidCampusInfo(incoming()) && incoming().id == existing().id && incoming().updatedAt == request.time && incoming().diff(existing()).affectedKeys().hasOnly(['campusName', 'locationText', 'announcement', 'dataNotice', 'updatedBy', 'updatedAt']) && isAdmin();
+      allow delete: if isValidId(infoId) && isAdmin();
+    }
+
+    // 8. Map Layouts (Verified User Upload as Pending, Admin Legitimacy Verification)
+    match /map_layouts/{layoutId} {
+      allow get: if isValidId(layoutId) && (
+        existing().status == 'verified' ||
+        (isSignedIn() && existing().submittedByUid == request.auth.uid) ||
+        isAdmin()
+      );
+      allow list: if resource.data.status == 'verified'
+        || isBootstrappedAdmin()
+        || (isSignedIn() && resource.data.submittedByUid == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(layoutId)
+        && isValidMapLayout(incoming())
+        && incoming().id == layoutId
+        && incoming().submittedByUid == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().isActive == false
+        && incoming().reviewedBy == ''
+        && incoming().reviewNotes == ''
+        && !('reviewedAt' in incoming())
+        && incoming().createdAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(layoutId)
+        && isValidMapLayout(incoming())
+        && incoming().id == existing().id
+        && incoming().submittedByUid == existing().submittedByUid
+        && incoming().layoutContent == existing().layoutContent
+        && incoming().sha256Hash == existing().sha256Hash
+        && incoming().format == existing().format
+        && incoming().createdAt == existing().createdAt
+        && incoming().reviewedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isActive', 'reviewedBy', 'reviewNotes', 'reviewedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['isActive', 'reviewedBy', 'reviewedAt'])
+        )
+        && isAdmin();
+      allow delete: if isValidId(layoutId) && isAdmin();
+    }
+  }
+}
